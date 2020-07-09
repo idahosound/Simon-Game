@@ -2,32 +2,63 @@ var gamePattern = [];
 var buttonColors = ["red", "blue", "green", "yellow"];
 var level = 0;
 var intervalTime = 700;
-// var userClickCount = -1;
+var userClickCount = 0;
 var timer = null;
 var newRound = null;
+var keyboardOn = true;
 
-// Check for keydown to start the game
-$('body').keydown(function() {
-  if (level === 0) {
-    nextSequence();
+$(document).keydown(function(e) {
+  if (keyboardOn == false) { // if keyboard input is off
+    return false;
+  } else { // if keyboard input is on
+    if (level === 0) { // if this is the start of the game
+      nextSequence();
+    } else {
+      var keyPressed = event.key;
+      userClickCount++;
+      clearTimeout(timer);
+      trigger(keyPressed);
+    }
   }
 });
+
+function trigger(keyPressed) {
+  switch (keyPressed) {
+    case "q":
+      checkAnswer(userClickCount, "green");
+      break;
+    case "a":
+      checkAnswer(userClickCount, "yellow");
+      break;
+    case "o":
+      checkAnswer(userClickCount, "red");
+      break;
+    case "l":
+      checkAnswer(userClickCount, "blue");
+      break;
+    default:
+  }
+}
 
 // Listens for a button click. Counts the user's clicks and
 // grabs the color name from the button ID. Passes these values to
 // the checkAnswer function
 $(".btn").click(function() {
-  userClickCount++;
-  var userChosenColor = this.id;
-  clearTimeout(timer);  // stops the timer since the user clicked
-  checkAnswer(userClickCount, userChosenColor);
+  if (keyboardOn == false) {
+    return false;
+  } else {
+    userClickCount++;
+    var userChosenColor = this.id;
+    clearTimeout(timer); // stops the timer since the user clicked
+    checkAnswer(userClickCount, userChosenColor);
+  }
 });
 
 // Compares the chosen color and it's place in the sequence to the gamePattern
 function checkAnswer(clickCount, chosenColor) {
-  if (gamePattern[clickCount -1] == chosenColor) { // if the selection is correct
+  if (gamePattern[clickCount - 1] == chosenColor) { // if the selection is correct
     isCorrect(chosenColor);
-    startTimer();  // restarts the timer
+    startTimer(); // restarts the timer
     if (gamePattern.length == clickCount) { // if it's the end of the sequence
       clearTimeout(timer); // stops the timer
       newRound = setTimeout(function() { // starts the next sequence after a 2 sec delay
@@ -42,11 +73,12 @@ function checkAnswer(clickCount, chosenColor) {
   }
 }
 
-// appends one random iteration to the game pattern
+// appends one random iteration to the game pattern and plays back the whole sequence
 function nextSequence() {
+  keyboardOn = false;
   userClickCount = 0 //resets user input count
   level++; //advances level
-  intervalTimeSubtract = level * 20;
+  var intervalTimeSubtract = level * 40;
   $('h1').text('Level ' + level); // Updates header text
   var randomNumber = Math.floor(Math.random() * 4); // Random number from 1-4
   var randomChosenColor = buttonColors[randomNumber]; // Gets color name from array
@@ -60,16 +92,19 @@ function nextSequence() {
         // setTimeout passes the function to Web API, taking it out of the call stack.
         // This necessitates the use of Let, so variable values are retained
         // instead of overwritten. Otherwise, the loop finishes instantly and
-        // when the timeouts execute they all return the same (global) value
+        // when the timeouts execute they all return the same value for i
         isCorrect(playbackColor);
       }, (i * intervalTime) - intervalTimeSubtract); // makes it go faster each level
       // Since all timeouts are sent to the queue at the same time,
       // multiplying by i produces regular intervals
     }
   };
-  setTimeout(function () {
+  setTimeout(function() {
+    keyboardOn = true;
+  }, (gamePattern.length - 1) * intervalTime - intervalTimeSubtract);
+  setTimeout(function() {
     startTimer();
-  }, (i*intervalTime) - intervalTimeSubtract); // starts the timer running, with a delay to account for playback time
+  }, (gamePattern.length * intervalTime) - intervalTimeSubtract); // starts the timer running, with a delay to account for sequence playback time
 }
 
 function isCorrect(thisColor) {
@@ -82,12 +117,12 @@ function isWrong(thisColor) {
   buttonAnimation(thisColor);
   playSoundWrong(thisColor);
   $('body').addClass('game-over');
-  setTimeout (function () {
+  setTimeout(function() {
     $('body').removeClass('game-over');
     level = 0;
-    $('h1').text('Press A Key to Start');
+    $('h1').text('Game Over. Press Any Key to Restart');
     gamePattern = [];
-  }, 2000);
+  }, 250);
 
 }
 
@@ -108,8 +143,8 @@ function playSoundWrong() {
   sound.play();
 }
 
-// Not that timer needs to be set outside the function so it can be accessed
-// by other functions
+// Note that timer needs to be declared as a variable outside the function
+//  so it can be accessed by other functions
 function startTimer() {
   timer = setTimeout(function() {
     isWrong(gamePattern[level - 1]);
